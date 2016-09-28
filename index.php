@@ -32,7 +32,7 @@
 		<section class="col-xs-12">
 			
 		<img class="img-responsive center-block" src="img/cloud.jpg">
-			
+
 		
 </section>
 
