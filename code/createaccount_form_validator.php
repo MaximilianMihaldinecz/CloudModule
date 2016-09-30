@@ -20,29 +20,23 @@ class CreateAccountFormValidator
         }
 
         //Validate the First name
-        $validationSuccess = $validationSuccess && $this->ValidateName($FormData['firstName'],'First name');
+        $validationSuccess = $this->ValidateName($FormData['firstName'],'First name') && $validationSuccess;
 
         //Validate last name
-        $validationSuccess = $validationSuccess && $this->ValidateName($FormData['lastName'],'Last name');
+        $validationSuccess = $this->ValidateName($FormData['lastName'],'Last name') && $validationSuccess;
 
         //Validate Email
-        $validationSuccess = $validationSuccess && $this->ValidateEmail($FormData['inputEmail']);
+        $validationSuccess = $this->ValidateEmail($FormData['inputEmail']) && $validationSuccess;
 
         //Validate username
-        $validationSuccess = $validationSuccess && $this->ValidateUsername($FormData['userName']);
+        $validationSuccess = $this->ValidateUsername($FormData['userName']) && $validationSuccess;
 
         //Validate password
-        $validationSuccess = $validationSuccess && $this->ValidatePassword($FormData['passwordField']);
+        $validationSuccess = $this->ValidatePassword($FormData['passwordField']) && $validationSuccess;
 
 
         return $validationSuccess;
     }
-
-    public  function  GetValidationErrors()
-    {
-        return $this->_ValidationErrorMsg;
-    }
-
 
     public function ValidateName($name, $nameType)
     {
@@ -57,7 +51,7 @@ class CreateAccountFormValidator
 
     public function ValidateEmail($emailAddress)
     {
-        if(!isset($emailAddress))
+        if(!isset($emailAddress) || $emailAddress == null)
         {
             $this->_ValidationErrorMsg[] = 'Email: This is required, please provide it.';
             return false;
@@ -66,10 +60,9 @@ class CreateAccountFormValidator
         return true;
     }
 
-
     public function ValidateUsername($userName)
     {
-        if(!isset($userName))
+        if(!isset($userName) || $userName == null)
         {
             $this->_ValidationErrorMsg[] = 'Username: This is required, please provide it.';
             return false;
@@ -80,13 +73,18 @@ class CreateAccountFormValidator
 
     public function ValidatePassword($passw)
     {
-        if(!isset($passw))
+        if(!isset($passw) || $passw == null)
         {
             $this->_ValidationErrorMsg[] = 'Password: This is required, please provide it.';
             return false;
         }
 
         return true;
+    }
+
+    public  function  GetValidationErrors()
+    {
+        return $this->_ValidationErrorMsg;
     }
 
 
