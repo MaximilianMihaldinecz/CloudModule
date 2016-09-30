@@ -1,6 +1,8 @@
 <?php
     $usePost = false;
     require  './code/createaccount_form_validator.php';
+    $isFormSubmitted = false;
+    $shouldDisplayError = false;
 ?>
 
 <!DOCTYPE html>
@@ -40,15 +42,26 @@
                         //Checking if the data is in Post or Get
                         $_Formdata = ($usePost ? $_POST : $_GET);
 
-                        //Check if the data exists
-                        if(isset($_Formdata))
+
+                        //Check if the form was submitted
+                        if(isset($_Formdata) && count($_Formdata)>0)
                         {
+                            //Form was submitted, let's validate the form.
+                            $isFormSubmitted = true;
+
                             //New form validator object
                             $Validator = new CreateAccountFormValidator();
 
                             //Result of form validation (true or false)
                             $ValidationResult = $Validator->ValidateFormData($_Formdata);
+
+                            if($ValidationResult == false)
+                            {
+                                $shouldDisplayError = true;
+                            }
                         }
+
+
                     ?>
 
 
@@ -56,22 +69,26 @@
                     <div class="h3">Create account</div>
 
                     <!-- Error message  START -->
-                    <div class="alert alert-warning <?php if($ValidationResult == true ) {echo 'hideElement';} ?>">
+                    <div class="alert alert-warning <?php if($shouldDisplayError == false ) {echo 'hideElement';} ?>">
                         Failed to create the account due to the following error(s): <br>
                         <ul>
                             <?php
-                                $errors = $Validator->GetValidationErrors();
 
-                                if(isset($errors))
+                                if($shouldDisplayError == true)
                                 {
-                                    foreach($errors as $error)
+                                    $errors = $Validator->GetValidationErrors();
+
+                                    if(isset($errors))
                                     {
-                                        echo "<li>$error</li>";
+                                        foreach($errors as $error)
+                                        {
+                                            echo "<li>$error</li>";
+                                        }
                                     }
-                                }
-                                else
-                                {
-                                    echo 'Unknown error.';
+                                    else
+                                    {
+                                        echo 'Unknown error.';
+                                    }
                                 }
                             ?>
                         </ul>
