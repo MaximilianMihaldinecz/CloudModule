@@ -60,8 +60,6 @@
                                 $shouldDisplayError = true;
                             }
                         }
-
-
                     ?>
 
 
@@ -95,6 +93,12 @@
                     </div>
                     <!-- Error message END -->
 
+                    <!-- Success message START -->
+                    <div class="alert alert-success <?php if($ValidationResult == false ) {echo 'hideElement';} ?>">
+                        We have created your account! You should receive a confirmation email shortly.
+                    </div>
+                    <!-- Success message END -->
+
                     <form <?php if($usePost){echo 'method="post"';} else{echo 'method="get"';} ?> action="./createaccount.php">
 
                         <div class="form-group">
@@ -114,13 +118,13 @@
 
                         <div class="form-group">
                             <label for="userName">Username</label>
-                            <input class="form-control" type="text" name="userName" id="userName" placeholder="Only Enlish alphabets">
+                            <input class="form-control" type="text" name="userName" id="userName" placeholder="Only Enlish alphabets (min:5 max:15)">
                         </div>
 
                         <div class="form-group">
                             <label for="passwordField">Password</label>
                             <input class="form-control" type="password" name="passwordField" id="passwordField"
-                                   placeholder="Only English alphabets and numbers">
+                                   placeholder="Only English alphabets and numbers (min:6 max:15)">
                         </div>
 
                         <div class="form-group checkbox">
