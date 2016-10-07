@@ -4,7 +4,15 @@
 
 class CreateAccountFormValidator
 {
-     private $_ValidationErrorMsg = array();
+    private $_ValidationErrorMsg = array();
+
+    private $validatedFirstName = null;
+    private $validatedLastName = null;
+    private $validatedEmail = null;
+    private $validatedUsername = null;
+    private $validatedInstallWordpressBox = null;
+    private $validatedInstallPhpMyadminBox = null;
+
 
     //Returns true if the validation was true
     //Returns false if the validation failed
@@ -12,6 +20,7 @@ class CreateAccountFormValidator
     public function ValidateFormData(&$FormData)
     {
         $validationSuccess = true;
+
 
         if(!isset($FormData))
         {
@@ -34,12 +43,29 @@ class CreateAccountFormValidator
         //Validate password
         $validationSuccess = $this->ValidatePassword($FormData['passwordField']) && $validationSuccess;
 
+        //Store checkboxes' status for playback if needed.
+        if($validationSuccess === false)
+        {
+            $this->StoreWordpresCheckboxStatus($FormData['installWordPress']);
+            $this->StorePhpMyAdminCheckboxStatus($FormData['installPhpMyAdmin']);
+        }
+
 
         return $validationSuccess;
     }
 
     public function ValidateName($name, $nameType)
     {
+        if($nameType === 'First name')
+        {
+            $this->validatedFirstName = null;
+        }
+        if($nameType === 'Last name')
+        {
+            $this->validatedLastName = null;
+        }
+
+
         //Check if string exists
         if($this->isExists($name) == false)
         {
@@ -65,11 +91,22 @@ class CreateAccountFormValidator
             return false;
         }
 
+
+        if($nameType === 'First name')
+        {
+            $this->validatedFirstName = $name;
+        }
+        if($nameType === 'Last name')
+        {
+            $this->validatedLastName = $name;
+        }
+
         return true;
     }
 
     public function ValidateEmail($emailAddress)
     {
+        $this->validatedEmail = null;
 
         if($this->isExists($emailAddress) == false)
         {
@@ -83,11 +120,14 @@ class CreateAccountFormValidator
             return false;
         }
 
+        $this->validatedEmail = $emailAddress;
         return true;
     }
 
     public function ValidateUsername($userName)
     {
+        $this->validatedUsername = null;
+
         if($this->isExists($userName) == false)
         {
             $this->_ValidationErrorMsg[] = 'Username: This is required, please provide it.';
@@ -118,6 +158,13 @@ class CreateAccountFormValidator
             return false;
         }
 
+        if($this->isUserExistsAlready($userName))
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Already exists. Please select an another one.';
+            return false;
+        }
+
+        $this->validatedUsername = $userName;
         return true;
     }
 
@@ -164,6 +211,19 @@ class CreateAccountFormValidator
         else
         {
             return true;
+        }
+    }
+
+    public function isUserExistsAlready($username)
+    {
+        $output = shell_exec("id -u $username");
+        if(strpos($output, 'no') === false)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -236,6 +296,78 @@ class CreateAccountFormValidator
         else
         {
             return true;
+        }
+    }
+
+
+    public function EchoValidatedFirstname()
+    {
+        if($this->validatedFirstName != null)
+        {
+            echo 'value="' . $this->validatedFirstName . '"';
+        }
+    }
+
+    public function EchoValidatedLastname()
+    {
+        if($this->validatedLastName != null)
+        {
+            echo 'value="' . $this->validatedLastName . '"';
+        }
+    }
+
+    public function EchoValidatedEmail()
+    {
+        if($this->validatedEmail != null)
+        {
+            echo 'value="' . $this->validatedEmail . '"';
+        }
+    }
+
+    public function EchoValidatedUsername()
+    {
+        if($this->validatedUsername != null)
+        {
+            echo 'value="' . $this->validatedUsername . '"';
+        }
+    }
+
+    public function EchoWordpressCheckboxStatus()
+    {
+        if($this->validatedInstallWordpressBox === true)
+        {
+            echo 'checked="checked"';
+        }
+    }
+
+    public function EchoPhpMyAdminCheckboxStatus()
+    {
+        if($this->validatedInstallPhpMyadminBox === true)
+        {
+            echo 'checked="checked"';
+        }
+    }
+
+
+    private function StoreWordpresCheckboxStatus($stat)
+    {
+        if($this->isExists($stat))
+        {
+            if($stat === "on")
+            {
+                $this->validatedInstallWordpressBox = true;
+            }
+        }
+    }
+
+    private function StorePhpMyAdminCheckboxStatus($stat)
+    {
+        if($this->isExists($stat))
+        {
+            if($stat === "on")
+            {
+                $this->validatedInstallPhpMyadminBox = true;
+            }
         }
     }
 

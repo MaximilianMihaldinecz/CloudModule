@@ -103,40 +103,59 @@
 
                         <div class="form-group">
                             <label for="firstName">First name</label>
-                            <input class="form-control" type="text" name="firstName" id="firstName" placeholder="John" minlength="2" maxlength="15" required autofocus>
+                            <input class="form-control" type="text"
+                                   name="firstName" id="firstName"
+                                   placeholder="E.g. John  (Only English alphabets, min:2 max:15)" minlength="2"
+                                   maxlength="15" required autofocus pattern="[A-Za-z]*"
+                                   <?php if($Validator != null) { $Validator->EchoValidatedFirstname();  } ?> >
                         </div>
 
                         <div class="form-group">
                             <label for="lastName">Last name</label>
-                            <input class="form-control" type="text" name="lastName" id="lastName" placeholder="Smith" minlength="2" maxlength="15" required>
+                            <input class="form-control" type="text"
+                                   name="lastName" id="lastName"
+                                   placeholder="E.g. Smith (Only English alphabets, min:2 max:15)" minlength="2"
+                                   maxlength="15" required pattern="[A-Za-z]*"
+                                   <?php if($Validator != null) { $Validator->EchoValidatedLastname();  } ?> >
                         </div>
 
                         <div class="form-group">
                             <label for="inputEmail">Email</label>
-                            <input class="form-control" type="email" name="inputEmail" id="inputEmail" placeholder="xyz@email.com" maxlength="60" required>
+                            <input class="form-control" type="email"
+                                   name="inputEmail" id="inputEmail"
+                                   placeholder="xyz@email.com" maxlength="60" required
+                                   <?php if($Validator != null) { $Validator->EchoValidatedEmail();  } ?> >
                         </div>
 
                         <div class="form-group">
                             <label for="userName">Username</label>
-                            <input class="form-control" type="text" name="userName" id="userName" placeholder="Only Enlish alphabets (min:5 max:15)" pattern="[a-z]" minlength="5" maxlength="15"  required>
+                            <input class="form-control" type="text"
+                                   name="userName" id="userName"
+                                   placeholder="Only Enlish alphabets (min:5 max:15)" pattern="[a-z]*"
+                                   minlength="5" maxlength="15"  required
+                                   <?php if($Validator != null) { $Validator->EchoValidatedUsername();  } ?>>
                         </div>
 
                         <div class="form-group">
                             <label for="passwordField">Password</label>
                             <input class="form-control" type="password" name="passwordField" id="passwordField"
-                                   placeholder="Only English alphabets and numbers (min:6 max:15)" minlength="6" maxlength="15"  pattern="[A-Za-z1-9]" required>
+                                   placeholder="Only English alphabets and numbers (min:6 max:15)" minlength="6" maxlength="15"  pattern="[A-Za-z1-9]*" required>
                         </div>
 
                         <div class="form-group checkbox">
                             <label>
-                                <input type="checkbox" name="installWordPress" id="installWordPress">
+                                <input type="checkbox" name="installWordPress"
+                                       id="installWordPress"
+                                       <?php if($Validator != null) { $Validator->EchoWordpressCheckboxStatus();  } ?> >
                                 Install WordPress
                             </label>
                         </div>
 
                         <div class="form-group checkbox">
                             <label>
-                                <input type="checkbox" name="installPhpMyAdmin" id="installPhpMyAdmin">
+                                <input type="checkbox" name="installPhpMyAdmin"
+                                       id="installPhpMyAdmin"
+                                       <?php if($Validator != null) { $Validator->EchoPhpMyAdminCheckboxStatus();  } ?> >
                                 Install PhpMyAdmin
                             </label>
                         </div>
