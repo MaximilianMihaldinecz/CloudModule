@@ -12,6 +12,7 @@ class CreateAccountFormValidator
     private $validatedUsername = null;
     private $validatedInstallWordpressBox = null;
     private $validatedInstallPhpMyadminBox = null;
+    private $validatedPassword = null;
 
 
     //Returns true if the validation was true
@@ -158,6 +159,12 @@ class CreateAccountFormValidator
             return false;
         }
 
+        if($this->isUsernameReserved($userName))
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Already exists. Please select an another one.';
+            return false;
+        }
+
         if($this->isUserExistsAlready($userName))
         {
             $this->_ValidationErrorMsg[] = 'Username: Already exists. Please select an another one.';
@@ -170,6 +177,8 @@ class CreateAccountFormValidator
 
     public function ValidatePassword($passw)
     {
+        $this->validatedPassword = null;
+
         if($this->isExists($passw) == false)
         {
             $this->_ValidationErrorMsg[] = 'Password: This is required, please provide it.';
@@ -194,6 +203,7 @@ class CreateAccountFormValidator
             return false;
         }
 
+        $this->validatedPassword = $passw;
         return true;
     }
 
@@ -201,6 +211,23 @@ class CreateAccountFormValidator
     {
         return $this->_ValidationErrorMsg;
     }
+
+    public function isUsernameReserved($str)
+    {
+        if
+        ( $str === 'greathosting' ||
+          $str === 'phpmyadmin' ||
+          $str === 'mysql' ||
+          $str === 'greathostingdbuser')
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
 
     public function isAlphabetAndNumbersOnly($str)
     {
@@ -217,13 +244,13 @@ class CreateAccountFormValidator
     public function isUserExistsAlready($username)
     {
         $output = shell_exec("id -u $username");
-        if(strpos($output, 'no') === false)
+        if( $output == null || strpos($output, 'no') !== false)
         {
-            return true;
+            return false;
         }
         else
         {
-            return false;
+            return true;
         }
     }
 
@@ -371,6 +398,30 @@ class CreateAccountFormValidator
         }
     }
 
+    public  function GetValidatedFirstName()
+    {
+        return $this->validatedFirstName;
+    }
+
+    public function GetValidatedLastName()
+    {
+        return $this->validatedLastName;
+    }
+
+    public function GetValidatedEmail()
+    {
+        return $this->validatedEmail;
+    }
+
+    public function GetValidatedUsername()
+    {
+        return $this->validatedUsername;
+    }
+
+    public function GetValidatedPassword()
+    {
+        return $this->validatedPassword;
+    }
 
 }
 

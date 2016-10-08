@@ -1,8 +1,54 @@
 <?php
     $usePost = false;
     require  './code/createaccount_form_validator.php';
+    require  './code/AccountCreator.php';
     $isFormSubmitted = false;
     $shouldDisplayError = false;
+    $shouldShowForm = true;
+    $shouldShowSuccessMsg = false;
+
+
+    //Checking if the data is in Post or Get
+    $_Formdata = ($usePost ? $_POST : $_GET);
+
+    //Check if the form was submitted
+    if(isset($_Formdata) && count($_Formdata)>0)
+    {
+        //Form was submitted, let's validate the form.
+        $isFormSubmitted = true;
+
+        //New form validator object
+        $Validator = new CreateAccountFormValidator();
+
+        //New account creator object
+        $ACreator = new AccountCreator();
+
+        //Result of form validation (true or false)
+        $ValidationResult = $Validator->ValidateFormData($_Formdata);
+
+        //Display error if the form validation fails
+        if($ValidationResult == false)
+        {
+            $shouldDisplayError = true;
+        }
+
+        //Try to create the account if validation was successful
+        if($ValidationResult === true)
+        {
+            $CreationResult = $ACreator->CreateAccount($Validator);
+
+            if($CreationResult === false)
+            {
+                $shouldDisplayError = true;
+            }
+            else
+            {
+                $shouldShowForm = false;
+                $shouldShowSuccessMsg = true;
+            }
+        }
+    }
+
 ?>
 
 <!DOCTYPE html>
@@ -38,32 +84,6 @@
             <div class="row">
                 <section class="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2  col-lg-6 col-lg-offset-3">
 
-                    <?php
-                        //Checking if the data is in Post or Get
-                        $_Formdata = ($usePost ? $_POST : $_GET);
-
-
-                        //Check if the form was submitted
-                        if(isset($_Formdata) && count($_Formdata)>0)
-                        {
-                            //Form was submitted, let's validate the form.
-                            $isFormSubmitted = true;
-
-                            //New form validator object
-                            $Validator = new CreateAccountFormValidator();
-
-                            //Result of form validation (true or false)
-                            $ValidationResult = $Validator->ValidateFormData($_Formdata);
-
-                            if($ValidationResult == false)
-                            {
-                                $shouldDisplayError = true;
-                            }
-                        }
-                    ?>
-
-
-
                     <div class="h3">Create account</div>
 
                     <!-- Error message  START -->
@@ -74,19 +94,40 @@
 
                                 if($shouldDisplayError == true)
                                 {
-                                    $errors = $Validator->GetValidationErrors();
 
-                                    if(isset($errors))
+                                    if($ValidationResult === false)
                                     {
-                                        foreach($errors as $error)
+                                        //Validation related error
+                                        $errors = $Validator->GetValidationErrors();
+
+                                        if(isset($errors))
                                         {
-                                            echo "<li>$error</li>";
+                                            foreach($errors as $error)
+                                            {
+                                                echo "<li>$error</li>";
+                                            }
+                                        }
+                                        else
+                                        {
+                                            echo 'Unknown error.';
                                         }
                                     }
                                     else
                                     {
-                                        echo 'Unknown error.';
+                                        //Validation was ok, but error during account creation
+                                        $error = $ACreator->GetErrorMsg();
+
+                                        if(isset($error) && $error != null)
+                                        {
+                                            echo "<li>$error</li>";
+                                        }
+                                        else
+                                        {
+                                            echo 'Unknown error.';
+                                        }
+
                                     }
+
                                 }
                             ?>
                         </ul>
@@ -94,12 +135,15 @@
                     <!-- Error message END -->
 
                     <!-- Success message START -->
-                    <div class="alert alert-success <?php if($ValidationResult == false ) {echo 'hideElement';} ?>">
+                    <div class="alert alert-success <?php if($shouldShowSuccessMsg == false ) {echo 'hideElement';} ?>">
                         We have created your account! You should receive a confirmation email shortly.
                     </div>
                     <!-- Success message END -->
 
-                    <form <?php if($usePost){echo 'method="post"';} else{echo 'method="get"';} ?> action="./createaccount.php">
+                    <form
+                        <?php if($usePost){echo 'method="post"';} else{echo 'method="get"';} ?>
+                        action="./createaccount.php"
+                        class="<?php if($shouldShowForm == false ) {echo 'hideElement';}?>">
 
                         <div class="form-group">
                             <label for="firstName">First name</label>
