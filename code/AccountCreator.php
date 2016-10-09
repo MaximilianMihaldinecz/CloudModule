@@ -3,16 +3,12 @@
 
 class AccountCreator
 {
-
     private $CreationErrorMsg = null;
 
     private $Validator = null;
     private $db_hostName = 'localhost';
-    private $db_userName = 'greathostingdbuser';
-    private $db_name = 'greathosting';
     private $db_customer_table = 'customers';
-    private $db_customer_table_cols = '(username, email, firstname, lastname)';
-    private $db_password = 'gR8h0St1ngP';
+    private $db_customer_table_cols = '(username, email, firstname, lastname, password)';
     private $db_queryResult = null;
 
 
@@ -42,6 +38,8 @@ class AccountCreator
         }
 
 
+
+
         $this->CloseDB();
         return true;
     }
@@ -51,9 +49,27 @@ class AccountCreator
         return $this->CreationErrorMsg;
     }
 
+    private function CreateLinuxUser()
+    {
+        $username = $this->Validator->GetValidatedUsername();
+        $password = $this->Validator->GetValidatedPassword();
+
+    }
+
     private function ConnectToDb()
     {
-        $this->db_connection = mysqli_connect($this->db_hostName, $this->db_userName, $this->db_password, $this->db_name);
+        require '/var/www/settings/settings.php';
+        require_once 'Crypto.php';
+
+        $crypter = new Crypto();
+        $encoded_pass = $crypter->Decrypt($db_password);
+
+        if($encoded_pass == false)
+        {
+            return false;
+        }
+
+        $this->db_connection = mysqli_connect($this->db_hostName, $db_userName, $encoded_pass, $db_name);
 
         if($this->db_connection != true)
         {
@@ -68,19 +84,28 @@ class AccountCreator
 
     private function InsertUserIntoDb()
     {
-        //$this->Validator = new CreateAccountFormValidator();
-        //$this->Validator->GetValidatedUsername();
-
+        require_once 'Crypto.php';
+        $crypter = new Crypto();
 
         $username = $this->Validator->GetValidatedUsername();
         $email = $this->Validator->GetValidatedEmail();
         $firstname = $this->Validator->GetValidatedFirstName();
         $lastname = $this->Validator->GetValidatedLastName();
+        $passw = $this->Validator->GetValidatedPassword();
+
+
+
+        $encrypted_pass = $crypter->Encrypt($passw);
+
+        if($encrypted_pass == false)
+        {
+            return false;
+        }
 
 
         $query = 'INSERT INTO ' . $this->db_customer_table . ' '
                  . $this->db_customer_table_cols . ' '
-                 . "VALUES('$username','$email','$firstname','$lastname')";
+                 . "VALUES('$username','$email','$firstname','$lastname', '$encrypted_pass')";
 
 
 

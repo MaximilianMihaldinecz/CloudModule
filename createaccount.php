@@ -136,7 +136,7 @@
 
                     <!-- Success message START -->
                     <div class="alert alert-success <?php if($shouldShowSuccessMsg == false ) {echo 'hideElement';} ?>">
-                        We have created your account! You should receive a confirmation email shortly.
+                        We have created your account! You should receive a confirmation email in a few minutes.
                     </div>
                     <!-- Success message END -->
 

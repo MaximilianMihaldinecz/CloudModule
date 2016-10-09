@@ -218,7 +218,9 @@ class CreateAccountFormValidator
         ( $str === 'greathosting' ||
           $str === 'phpmyadmin' ||
           $str === 'mysql' ||
-          $str === 'greathostingdbuser')
+          $str === 'greathostingdbuser' ||
+          $str === 'rootonly' ||
+          $str === 'fonts')
         {
             return true;
         }
