@@ -8,7 +8,7 @@ class AccountCreator
     private $Validator = null;
     private $db_hostName = 'localhost';
     private $db_customer_table = 'customers';
-    private $db_customer_table_cols = '(username, email, firstname, lastname, password)';
+    private $db_customer_table_cols = '(username, email, firstname, lastname, password, needwordpress, needphpmyadmin)';
     private $db_queryResult = null;
 
 
@@ -49,12 +49,6 @@ class AccountCreator
         return $this->CreationErrorMsg;
     }
 
-    private function CreateLinuxUser()
-    {
-        $username = $this->Validator->GetValidatedUsername();
-        $password = $this->Validator->GetValidatedPassword();
-
-    }
 
     private function ConnectToDb()
     {
@@ -92,6 +86,8 @@ class AccountCreator
         $firstname = $this->Validator->GetValidatedFirstName();
         $lastname = $this->Validator->GetValidatedLastName();
         $passw = $this->Validator->GetValidatedPassword();
+        $wpstat = $this->Validator->IsWordpressNeeded();
+        $pmastat = $this->Validator->IsPhpMyAdminNeeded();
 
 
 
@@ -105,7 +101,7 @@ class AccountCreator
 
         $query = 'INSERT INTO ' . $this->db_customer_table . ' '
                  . $this->db_customer_table_cols . ' '
-                 . "VALUES('$username','$email','$firstname','$lastname', '$encrypted_pass')";
+                 . "VALUES('$username','$email','$firstname','$lastname', '$encrypted_pass', $wpstat, $pmastat)";
 
 
 

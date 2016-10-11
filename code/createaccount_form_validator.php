@@ -10,8 +10,8 @@ class CreateAccountFormValidator
     private $validatedLastName = null;
     private $validatedEmail = null;
     private $validatedUsername = null;
-    private $validatedInstallWordpressBox = null;
-    private $validatedInstallPhpMyadminBox = null;
+    private $validatedInstallWordpressBox = false;
+    private $validatedInstallPhpMyadminBox = false;
     private $validatedPassword = null;
 
 
@@ -44,12 +44,10 @@ class CreateAccountFormValidator
         //Validate password
         $validationSuccess = $this->ValidatePassword($FormData['passwordField']) && $validationSuccess;
 
-        //Store checkboxes' status for playback if needed.
-        if($validationSuccess === false)
-        {
-            $this->StoreWordpresCheckboxStatus($FormData['installWordPress']);
-            $this->StorePhpMyAdminCheckboxStatus($FormData['installPhpMyAdmin']);
-        }
+        //Store checkboxes' status
+        $this->StoreWordpresCheckboxStatus($FormData['installWordPress']);
+        $this->StorePhpMyAdminCheckboxStatus($FormData['installPhpMyAdmin']);
+
 
 
         return $validationSuccess;
@@ -171,6 +169,7 @@ class CreateAccountFormValidator
             return false;
         }
 
+
         $this->validatedUsername = $userName;
         return true;
     }
@@ -243,8 +242,19 @@ class CreateAccountFormValidator
         }
     }
 
+    //Returns true if the user is found in the systems list of users or in the customers Database
+    //It also return true if there is an error during database connection/operation
     public function isUserExistsAlready($username)
     {
+        //Check against the database of users
+        $isDb = $this->isUserInDatabase($username);
+        if($isDb === true)
+        {
+            return true;
+        }
+
+
+        //Check agains the systems' user list
         $output = shell_exec("id -u $username");
         if( $output == null || strpos($output, 'no') !== false)
         {
@@ -255,6 +265,55 @@ class CreateAccountFormValidator
             return true;
         }
     }
+
+    public function isUserInDatabase($username)
+    {
+        require '/var/www/settings/settings.php';
+        require_once 'Crypto.php';
+        $crypter = new Crypto();
+        $encoded_pass = $crypter->Decrypt($db_password);
+
+        if($encoded_pass == false)
+        {
+            //Could not decode the DB password. Cannot check the user. Return as failed.
+            return true;
+        }
+
+        $connection = mysqli_connect('localhost', $db_userName, $encoded_pass, $db_name);
+
+        if($connection != true)
+        {
+            //Could not connect to the DB password. Cannot check the user. Return as failed.
+            return true;
+        }
+        else
+        {
+            $query = "SELECT * FROM customers WHERE username = '$username'";
+            $qurey_result = mysqli_query($connection,$query);
+
+            if($qurey_result == null || $qurey_result === false)
+            {
+                //Error during the query, return as failed.
+                return true;
+            }
+
+            if($qurey_result->num_rows == 0)
+            {
+                //No user with this username. Return false.
+                return false;
+            }
+
+            if($qurey_result->num_rows > 0)
+            {
+                //User found with this username
+                return true;
+            }
+
+
+        }
+
+    }
+
 
     public function  isLowerCaseOnly($str)
     {
@@ -367,6 +426,16 @@ class CreateAccountFormValidator
         {
             echo 'checked="checked"';
         }
+    }
+
+    public function IsWordpressNeeded()
+    {
+        return $this->validatedInstallWordpressBox;
+    }
+
+    public function IsPhpMyAdminNeeded()
+    {
+        return $this->validatedInstallPhpMyadminBox;
     }
 
     public function EchoPhpMyAdminCheckboxStatus()
