@@ -10,6 +10,8 @@ $col_pass = 4;
 $col_wp =  5;
 $col_phpma = 6;
 
+$needApacheReload = false;
+
 require '/var/www/html/CloudModule/code/Crypto.php';
 require '/var/www/settings/settings.php';
 
@@ -67,6 +69,9 @@ while ($row = $qurey_result->fetch_row())
         }
         else
         {
+            //Will reload apache configuration at the end of the script
+            $needApacheReload = true;
+
             //Let's send the confirmation email to the user.
             SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress);
             echo "User created: $row[$col_username] \n";
@@ -94,6 +99,19 @@ while ($row = $qurey_result->fetch_row())
                 echo "Database and access rights created for user: $row[$col_username] \n";
             }
 
+            //Create Virtual Host for *.greathosting.com
+            $vhresult = CreateVirtualHost($row[$col_username]);
+
+            if($vhresult == false)
+            {
+                echo "Could not create the virtual host for user: $row[$col_username] \n";
+            }
+            else
+            {
+                echo "Virtual host (subdomain) created for user: $row[$col_username] \n";
+            }
+
+
         }
     }
     else
@@ -101,12 +119,70 @@ while ($row = $qurey_result->fetch_row())
         echo 'Error during decrypting the password for user: ' . $row[$col_username] . "\n";
     }
 
-
 }
 
+//Closing mysql connections
 $qurey_result->close();
 mysqli_close($connection);
 mysqli_close($connection_rdbms);
+
+//Reloading apache if needed
+if($needApacheReload == true)
+{
+    $serviceReoload = 'service apache2 reload';
+    shell_exec($serviceReoload);
+
+    echo "Apache config reloaded \n";
+}
+
+//deleting bash history for security reasons
+shell_exec('history -c');
+shell_exec('history -w');
+
+
+
+
+
+function CreateVirtualHost($usrname)
+{
+    $hostn = shell_exec('hostname');
+    $configFile = '/etc/apache2/sites-available/' . $usrname . '.conf';
+    $siteEnabler = "a2ensite " . "$usrname" . ".conf";
+
+
+    $configContent =    "<VirtualHost *:80>\n" .
+                        "ServerName $usrname" . ".$hostn\n" .
+                        "DocumentRoot " . '/home/' . "$usrname" . '/public_html' . "\n" .
+                        '</VirtualHost>';
+
+    $fhandle = fopen($configFile, 'w');
+    if($fhandle == false)
+    {
+        echo "Could not open the file for writing: $configFile";
+        return false;
+    }
+
+    $writeResult = fwrite($fhandle, $configContent);
+    fclose($fhandle);
+
+    if($writeResult == false)
+    {
+        return false;
+    }
+    else
+    {
+        $enableResult = shell_exec($siteEnabler);
+
+        if($enableResult == null)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+}
 
 
 function CreateDBandAccess($usrname, $pass, $rdbms)
