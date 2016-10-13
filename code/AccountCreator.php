@@ -89,7 +89,25 @@ class AccountCreator
         $wpstat = $this->Validator->IsWordpressNeeded();
         $pmastat = $this->Validator->IsPhpMyAdminNeeded();
 
+        //converting boolean to 1 or 0 for the SQL query
+        if($wpstat == true)
+        {
+            $wpstat = 1;
+        }
+        else
+        {
+            $wpstat = 0;
+        }
 
+        //converting boolean to 1 or 0 for the SQL query
+        if($pmastat == true)
+        {
+            $pmastat = 1;
+        }
+        else
+        {
+            $pmastat = 0;
+        }
 
         $encrypted_pass = $crypter->Encrypt($passw);
 

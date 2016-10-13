@@ -7,6 +7,8 @@ $col_email = 1;
 $col_firstname = 2;
 $col_lastname = 3;
 $col_pass = 4;
+$col_wp =  5;
+$col_phpma = 6;
 
 require '/var/www/html/CloudModule/code/Crypto.php';
 require '/var/www/settings/settings.php';
@@ -15,8 +17,13 @@ $crypter = new Crypto();
 $encoded_pass = $crypter->Decrypt($db_password);
 if($encoded_pass == false) { exit("Error. Could not decrypt the database password.\n"); }
 
+//Connection to the customers database only
 $connection = mysqli_connect('localhost', $db_userName, $encoded_pass, $db_name);
+//Connection to the RDBMS
+$connection_rdbms = mysqli_connect('localhost', $db_userName, $encoded_pass);
+
 if($connection != true) { exit("Error. Could not connect to the database.\n"); }
+if($connection_rdbms != true) { exit("Error. Could not connect to the RDBMS.\n"); }
 
 
 $query = 'SELECT * FROM customers WHERE password is NOT NULL';
@@ -39,7 +46,16 @@ while ($row = $qurey_result->fetch_row())
 
     if($decrypted != false)
     {
+        //Selecting appropriate useradd skeleton based on the need of wordpress installation
         $command = 'useradd -m -p $(echo ' . "'$decrypted'" . ' | openssl passwd -1 -stdin) ' . $row[$col_username];
+        $neededwordpress = false;
+        if($row[$col_wp] == true || $row[$col_wp] == 1)
+        {
+            $command = $command . ' --skel /etc/skelwordpress/';
+            $neededwordpress = true;
+            echo "Wordpress installation selected for user: $row[$col_username] \n";
+        }
+
         shell_exec($command);
 
         //Check if the user was created
@@ -47,12 +63,13 @@ while ($row = $qurey_result->fetch_row())
         if( $newuid  == null || strpos($newuid , 'no') !== false)
         {
             echo 'Error. Could not create user: ' . $row[$col_username] . "\n";
-            SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false);
+            SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress);
         }
         else
         {
             //Let's send the confirmation email to the user.
-            SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true);
+            SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress);
+            echo "User created: $row[$col_username] \n";
 
             //NULL out the password in the DB once the user is created
             //UPDATE `customers` SET `password` = NULL WHERE `customers`.`username` = '...';
@@ -63,7 +80,19 @@ while ($row = $qurey_result->fetch_row())
             {
                 echo 'Error. The user was created, but could not update the database record: ' . $row[$col_username] . "\n";
             }
+            else
+            {
+                echo "Encrypted password removed from the DB for user: $row[$col_username] \n";
+            }
 
+
+            //Create the DB and mySquser
+            $dbcreation_result = CreateDBandAccess($row[$col_username], $decrypted, $connection_rdbms);
+
+            if($dbcreation_result != false)
+            {
+                echo "Database and access rights created for user: $row[$col_username] \n";
+            }
 
         }
     }
@@ -72,19 +101,78 @@ while ($row = $qurey_result->fetch_row())
         echo 'Error during decrypting the password for user: ' . $row[$col_username] . "\n";
     }
 
-    echo "User created: $row[$col_username] \n";
 
 }
 
 $qurey_result->close();
 mysqli_close($connection);
+mysqli_close($connection_rdbms);
 
 
-function SendEmail($emladdress, $usrname, $firstn, $isSuccess)
+function CreateDBandAccess($usrname, $pass, $rdbms)
+{
+
+    $dbcreator_query = "CREATE DATABASE $usrname";
+    $dbcreator_query_result = mysqli_query($rdbms, $dbcreator_query);
+
+    if($dbcreator_query_result == false)
+    {
+        echo "Error: Could not create the database for $usrname \n";
+        return false;
+    }
+
+    //Create user as
+    //E.g.: CREATE USER 'tmptmp2'@'%' IDENTIFIED WITH mysql_native_password AS '***';
+    $usrcreator_query = "CREATE USER '$usrname'@'%' IDENTIFIED BY '$pass'";
+    $usrcreator_query_result = mysqli_query($rdbms, $usrcreator_query);
+
+    if($usrcreator_query_result == false)
+    {
+        echo "Error: Could not create the database user: $usrname . However, the database was created.\n ";
+        return false;
+    }
+
+    //Granting only RDBMS usage rights and removing connection limits
+    //E.g.: GRANT USAGE ON *.* TO 'tmptmp2'@'%' REQUIRE NONE WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0;
+    $usrusage_query = "GRANT USAGE ON *.* TO '$usrname'@'%' REQUIRE NONE WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0";
+    $usrusage_query_result = mysqli_query($rdbms, $usrusage_query);
+
+    if($usrusage_query_result == false)
+    {
+        echo "Error: Could not grant usage permissions to the database user: $usrname . However, the database and DB user were created.\n ";
+        return false;
+    }
+
+
+    //Granting all priviliges to the user on his database
+    //E.g.: GRANT ALL PRIVILEGES ON `tmptmp2`.* TO 'tmptmp2'@'%';
+    $dbgrant_query = "GRANT ALL PRIVILEGES ON $usrname.* TO '$usrname'@'%'" ;
+    $dbgrant_query_result = mysqli_query($rdbms, $dbgrant_query);
+
+    if($dbgrant_query_result  == false)
+    {
+        echo "Error: Could not grant full privilidge for the user to its database: $usrname . However, the database and DB user were created.\n ";
+        return false;
+    }
+
+    return true;
+
+}
+
+
+function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress)
 {
     $body = "";
     $subject = "";
     $hostn = shell_exec('hostname'); //Make sure it works with other domain name too
+    $wptext = "\n";
+
+    if($isWordPress === true)
+    {
+        $wptext =   "\nAbout your WordPress installation: " .
+                    "WordPress will launch its setup when you first navigate to your domain.\n\n";
+    }
+
 
     if($hostn == false)
     {
@@ -101,10 +189,12 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess)
                     "You have provided your password during registration. In case you forgotten, ".
                     "You can reset it on our website (from the header menu).\n" .
                     "You can use any SSH/SFTP clients to access our service. We also provide a web interface ".
-                    "to manage your database with phpMyAdmin (see the header menu on our site). \n\n" .
+                    "to manage your database with phpMyAdmin (see the header menu on our site)." .
+                    "The name of your database is the same as your username. \n\n" .
                     "You can access your website in two ways: \n" .
                     "- $usrname.$hostn \n" .
                     "- $hostn/~$usrname \n\n".
+                    "$wptext" .
                     "Thanks for choosing our service!\n".
                     "$hostn";
     }

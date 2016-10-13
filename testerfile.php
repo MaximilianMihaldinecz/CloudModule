@@ -6,18 +6,10 @@
  * Time: 12:18
  */
 
-require './code/Crypto.php';
+//$result = mysqli_connect('localhost', 'johnsmith', 'johnsmith1', 'johnsmith');
+$result = mysqli_connect('localhost', 'test', 'test', 'test');
+echo $result;
 
-$cry = new Crypto();
-
-$res = $cry->Encrypt('asdasd');
-
-echo $res . '<br>';
-
-$res2 = $cry->Decrypt($res);
-
-echo $res2;
-
-
+mysqli_close($result);
 
 ?>
