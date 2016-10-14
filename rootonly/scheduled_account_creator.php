@@ -135,13 +135,6 @@ if($needApacheReload == true)
     echo "Apache config reloaded \n";
 }
 
-//deleting bash history for security reasons
-shell_exec('history -c');
-shell_exec('history -w');
-
-
-
-
 
 function CreateVirtualHost($usrname)
 {
@@ -259,7 +252,7 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress)
     {
         $subject = "Success: your account is ready at  $hostn ";
         $body    =  "Hi $firstn,\n\n" .
-                    "We have created your account at $hostn .\n" .
+                    "We have created your account at $hostn \n" .
                     "You can use our SSH, (S)FTP, MySQL and Web hosting services with your username and password.\n".
                     "Your username is: $usrname \n" .
                     "You have provided your password during registration. In case you forgotten, ".
@@ -269,7 +262,7 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress)
                     "The name of your database is the same as your username. \n\n" .
                     "You can access your website in two ways: \n" .
                     "- $usrname.$hostn \n" .
-                    "- $hostn/~$usrname \n\n".
+                    "- $hostn" . '/~' . "$usrname \n\n".
                     "$wptext" .
                     "Thanks for choosing our service!\n".
                     "$hostn";
@@ -278,7 +271,7 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress)
     {
         $subject = "Failure: could not create your account at $hostn";
         $body    =  "Hi $firstn,\n\n" .
-                    "We were not able to create your account due to technical error at $hostn .\n" .
+                    "We were not able to create your account due to technical error at $hostn \n" .
                     "You tried to register with this username $usrname .\n\n" .
                     "Please try to get in touch with us, or try to register an account again.\n\n" .
                     "Regards,\n" .

@@ -29,6 +29,9 @@ class CreateAccountFormValidator
             return false;
         }
 
+        //Validate the captcha
+        $validationSuccess = $this->ValidateCaptcha($FormData['captcha_code']) && $validationSuccess;
+
         //Validate the First name
         $validationSuccess = $this->ValidateName($FormData['firstName'],'First name') && $validationSuccess;
 
@@ -51,6 +54,29 @@ class CreateAccountFormValidator
 
 
         return $validationSuccess;
+    }
+
+    public function ValidateCaptcha($captcha)
+    {
+
+        if($this->isExists($captcha) == false)
+        {
+            $this->_ValidationErrorMsg[] = 'Captcha: This is required, please provide it.';
+            return false;
+        }
+
+        require_once '/var/www/html/CloudModule/securimage/securimage.php';
+        $securimage = new Securimage();
+
+        if ($securimage->check($captcha) == false)
+        {
+            $this->_ValidationErrorMsg[] = 'Captcha: Incorrect. Please try again.';
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     }
 
     public function ValidateName($name, $nameType)

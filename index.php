@@ -19,7 +19,7 @@
 			<LI><a href="createaccount.php">Create account</a></LI>			
 			<LI><a href="forgottenpassword.php">Forgotten password</a></LI>
 			<LI><a href="#">Manage files</a></LI>
-			<LI><a href="#">Manage database</a></LI>
+			<LI><a href="/phpmyadmin">Manage database</a></LI>
 		</ul>
 	</div>
 </nav>

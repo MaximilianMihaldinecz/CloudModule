@@ -72,7 +72,7 @@
                     <LI class="active"><a href="createaccount.php">Create account</a></LI>
                     <LI><a href="forgottenpassword.php">Forgotten password</a></LI>
                     <LI><a href="#">Manage files</a></LI>
-                    <LI><a href="#">Manage database</a></LI>
+                    <LI><a href="/phpmyadmin">Manage database</a></LI>
                 </ul>
             </div>
         </nav>
@@ -204,6 +204,13 @@
                             </label>
                         </div>
 
+                        <div class="form-group">
+                            <img id="captcha" class="center-block" src="securimage/securimage_show.php" alt="CAPTCHA Image" />
+                            <br>
+                            <input placeholder="Please enter the text from the image above (captcha)"
+                                   class="form-control" type="text" name="captcha_code"
+                                   id="captcha_code" minlength="1" maxlength="20" required />
+                        </div>
 
                         <input class="btn btn-default pull-right" type="submit" name="submitButton" id="submitButton" value="Create Account">
                     </form>
