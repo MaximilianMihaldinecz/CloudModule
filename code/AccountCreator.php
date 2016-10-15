@@ -8,7 +8,7 @@ class AccountCreator
     private $Validator = null;
     private $db_hostName = 'localhost';
     private $db_customer_table = 'customers';
-    private $db_customer_table_cols = '(username, email, firstname, lastname, password, needwordpress, needphpmyadmin)';
+    private $db_customer_table_cols = '(username, email, firstname, lastname, password, needwordpress)';
     private $db_queryResult = null;
 
 
@@ -87,7 +87,6 @@ class AccountCreator
         $lastname = $this->Validator->GetValidatedLastName();
         $passw = $this->Validator->GetValidatedPassword();
         $wpstat = $this->Validator->IsWordpressNeeded();
-        $pmastat = $this->Validator->IsPhpMyAdminNeeded();
 
         //converting boolean to 1 or 0 for the SQL query
         if($wpstat == true)
@@ -99,15 +98,6 @@ class AccountCreator
             $wpstat = 0;
         }
 
-        //converting boolean to 1 or 0 for the SQL query
-        if($pmastat == true)
-        {
-            $pmastat = 1;
-        }
-        else
-        {
-            $pmastat = 0;
-        }
 
         $encrypted_pass = $crypter->Encrypt($passw);
 
@@ -119,7 +109,7 @@ class AccountCreator
 
         $query = 'INSERT INTO ' . $this->db_customer_table . ' '
                  . $this->db_customer_table_cols . ' '
-                 . "VALUES('$username','$email','$firstname','$lastname', '$encrypted_pass', $wpstat, $pmastat)";
+                 . "VALUES('$username','$email','$firstname','$lastname', '$encrypted_pass', $wpstat)";
 
 
 

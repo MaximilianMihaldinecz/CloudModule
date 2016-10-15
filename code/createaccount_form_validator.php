@@ -11,7 +11,6 @@ class CreateAccountFormValidator
     private $validatedEmail = null;
     private $validatedUsername = null;
     private $validatedInstallWordpressBox = false;
-    private $validatedInstallPhpMyadminBox = false;
     private $validatedPassword = null;
 
 
@@ -47,9 +46,8 @@ class CreateAccountFormValidator
         //Validate password
         $validationSuccess = $this->ValidatePassword($FormData['passwordField']) && $validationSuccess;
 
-        //Store checkboxes' status
+        //Store wordpress checkbox status
         $this->StoreWordpresCheckboxStatus($FormData['installWordPress']);
-        $this->StorePhpMyAdminCheckboxStatus($FormData['installPhpMyAdmin']);
 
 
 
@@ -200,6 +198,53 @@ class CreateAccountFormValidator
         return true;
     }
 
+
+    public function ValidateExistingUsername($userName)
+    {
+        $this->validatedUsername = null;
+
+        if($this->isExists($userName) == false)
+        {
+            $this->_ValidationErrorMsg[] = 'Username: This is required, please provide it.';
+            return false;
+        }
+
+        if($this->isOnlyEnglishAlphabet($userName) == false)
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Only English alphabet characters are allowed.';
+            return false;
+        }
+
+        if($this->isShorterThan($userName, 5))
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Too short. Minimum 5 characters.';
+            return false;
+        }
+
+        if($this->isLongerThan($userName, 15))
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Too long. Maximum 15 characters.';
+            return false;
+        }
+
+        if($this->isLowerCaseOnly($userName) == false)
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Only lower case characters allowed.';
+            return false;
+        }
+
+        if($this->isUsernameReserved($userName))
+        {
+            $this->_ValidationErrorMsg[] = 'Username: Already exists. Please select an another one.';
+            return false;
+        }
+
+        return true;
+    }
+
+
+
+
     public function ValidatePassword($passw)
     {
         $this->validatedPassword = null;
@@ -232,6 +277,27 @@ class CreateAccountFormValidator
         return true;
     }
 
+    public function ValidateToken($token)
+    {
+
+        if($this->isExists($token) == false)
+        {
+            return false;
+        }
+
+        if(strlen($token) != 32)
+        {
+            return false;
+        }
+
+        if($this->isAlphabetAndNumbersOnly($token) == false)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     public  function  GetValidationErrors()
     {
         return $this->_ValidationErrorMsg;
@@ -245,7 +311,8 @@ class CreateAccountFormValidator
           $str === 'mysql' ||
           $str === 'greathostingdbuser' ||
           $str === 'rootonly' ||
-          $str === 'fonts')
+          $str === 'fonts' ||
+          $str === 'securimage')
         {
             return true;
         }
@@ -259,7 +326,7 @@ class CreateAccountFormValidator
     public function isAlphabetAndNumbersOnly($str)
     {
         //Check if it contains only English alphabet characters
-        if (preg_match('/[^a-zA-Z1-9]/', $str)){
+        if (preg_match('/[^a-zA-Z0-9]/', $str)){
             return false;
         }
         else
@@ -459,18 +526,6 @@ class CreateAccountFormValidator
         return $this->validatedInstallWordpressBox;
     }
 
-    public function IsPhpMyAdminNeeded()
-    {
-        return $this->validatedInstallPhpMyadminBox;
-    }
-
-    public function EchoPhpMyAdminCheckboxStatus()
-    {
-        if($this->validatedInstallPhpMyadminBox === true)
-        {
-            echo 'checked="checked"';
-        }
-    }
 
 
     private function StoreWordpresCheckboxStatus($stat)
@@ -484,16 +539,7 @@ class CreateAccountFormValidator
         }
     }
 
-    private function StorePhpMyAdminCheckboxStatus($stat)
-    {
-        if($this->isExists($stat))
-        {
-            if($stat === "on")
-            {
-                $this->validatedInstallPhpMyadminBox = true;
-            }
-        }
-    }
+
 
     public  function GetValidatedFirstName()
     {

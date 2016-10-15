@@ -195,15 +195,6 @@
                             </label>
                         </div>
 
-                        <div class="form-group checkbox">
-                            <label>
-                                <input type="checkbox" name="installPhpMyAdmin"
-                                       id="installPhpMyAdmin"
-                                       <?php if($Validator != null) { $Validator->EchoPhpMyAdminCheckboxStatus();  } ?> >
-                                Install PhpMyAdmin
-                            </label>
-                        </div>
-
                         <div class="form-group">
                             <img id="captcha" class="center-block" src="securimage/securimage_show.php" alt="CAPTCHA Image" />
                             <br>

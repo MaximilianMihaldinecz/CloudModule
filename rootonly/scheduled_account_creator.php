@@ -8,7 +8,7 @@ $col_firstname = 2;
 $col_lastname = 3;
 $col_pass = 4;
 $col_wp =  5;
-$col_phpma = 6;
+
 
 $needApacheReload = false;
 
