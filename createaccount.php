@@ -71,7 +71,7 @@
                     <LI><a href="index.php">Home</a></LI>
                     <LI class="active"><a href="createaccount.php">Create account</a></LI>
                     <LI><a href="forgottenpassword.php">Forgotten password</a></LI>
-                    <LI><a href="#">Manage files</a></LI>
+                    <LI><a href="managefiles.php">Manage files</a></LI>
                     <LI><a href="/phpmyadmin">Manage database</a></LI>
                 </ul>
             </div>

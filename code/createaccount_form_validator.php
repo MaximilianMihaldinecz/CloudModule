@@ -312,7 +312,9 @@ class CreateAccountFormValidator
           $str === 'greathostingdbuser' ||
           $str === 'rootonly' ||
           $str === 'fonts' ||
-          $str === 'securimage')
+          $str === 'securimage' ||
+          $str === 'register' ||
+          $str === 'mftp')
         {
             return true;
         }
