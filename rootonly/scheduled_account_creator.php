@@ -8,6 +8,9 @@ $col_firstname = 2;
 $col_lastname = 3;
 $col_pass = 4;
 $col_wp =  5;
+$col_token = 6;
+$col_tokenexpire = 7;
+$col_changedpass = 8;
 
 
 $needApacheReload = false;
@@ -34,92 +37,110 @@ if($qurey_result === false) { exit("Error. The query to get the list of users fo
 
 if($qurey_result->num_rows < 1)
 {
-    $qurey_result->close();
-    mysqli_close($connection);
-    exit("No account needs to be created.\n");
+    echo "No account needs to be created.\n";
 }
-
-//Go through each row of the result
-while ($row = $qurey_result->fetch_row())
+else
 {
-    //Create user with:
-    //useradd -m -p $(echo 'username' | openssl passwd -1 -stdin) username
-    $decrypted = $crypter->Decrypt($row[$col_pass]);
-
-    if($decrypted != false)
+    //Go through each row of the result
+    while ($row = $qurey_result->fetch_row())
     {
-        //Selecting appropriate useradd skeleton based on the need of wordpress installation
-        $command = 'useradd -m -p $(echo ' . "'$decrypted'" . ' | openssl passwd -1 -stdin) ' . $row[$col_username];
-        $neededwordpress = false;
-        if($row[$col_wp] == true || $row[$col_wp] == 1)
-        {
-            $command = $command . ' --skel /etc/skelwordpress/';
-            $neededwordpress = true;
-            echo "Wordpress installation selected for user: $row[$col_username] \n";
-        }
+        //Create user with:
+        //useradd -m -p $(echo 'username' | openssl passwd -1 -stdin) username
+        $decrypted = $crypter->Decrypt($row[$col_pass]);
 
-        shell_exec($command);
-
-        //Check if the user was created
-        $newuid  = shell_exec("id -u $row[$col_username]");
-        if( $newuid  == null || strpos($newuid , 'no') !== false)
+        if($decrypted != false)
         {
-            echo 'Error. Could not create user: ' . $row[$col_username] . "\n";
-            SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress);
+            //Selecting appropriate useradd skeleton based on the need of wordpress installation
+            $command = 'useradd -m -p $(echo ' . "'$decrypted'" . ' | openssl passwd -1 -stdin) ' . $row[$col_username];
+            $neededwordpress = false;
+            if($row[$col_wp] == true || $row[$col_wp] == 1)
+            {
+                $command = $command . ' --skel /etc/skelwordpress/';
+                $neededwordpress = true;
+                echo "Wordpress installation selected for user: $row[$col_username] \n";
+            }
+
+            shell_exec($command);
+
+            //Check if the user was created
+            $newuid  = shell_exec("id -u $row[$col_username]");
+            if( $newuid  == null || strpos($newuid , 'no') !== false)
+            {
+                echo 'Error. Could not create user: ' . $row[$col_username] . "\n";
+                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress);
+            }
+            else
+            {
+                //Will reload apache configuration at the end of the script
+                $needApacheReload = true;
+
+                //Let's send the confirmation email to the user.
+                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress);
+                echo "User created: $row[$col_username] \n";
+
+                //NULL out the password in the DB once the user is created
+                //UPDATE `customers` SET `password` = NULL WHERE `customers`.`username` = '...';
+                $update_query = 'UPDATE customers SET password = NULL where username = ' . "'$row[$col_username]'";
+                $update_query_result = mysqli_query($connection, $update_query);
+
+                if($update_query_result === false)
+                {
+                    echo 'Error. The user was created, but could not update the database record: ' . $row[$col_username] . "\n";
+                }
+                else
+                {
+                    echo "Encrypted password removed from the DB for user: $row[$col_username] \n";
+                }
+
+
+                //Create the DB and mySquser
+                $dbcreation_result = CreateDBandAccess($row[$col_username], $decrypted, $connection_rdbms);
+
+                if($dbcreation_result != false)
+                {
+                    echo "Database and access rights created for user: $row[$col_username] \n";
+                }
+
+                //Create Virtual Host for *.greathosting.com
+                $vhresult = CreateVirtualHost($row[$col_username]);
+
+                if($vhresult == false)
+                {
+                    echo "Could not create the virtual host for user: $row[$col_username] \n";
+                }
+                else
+                {
+                    echo "Virtual host (subdomain) created for user: $row[$col_username] \n";
+                }
+
+
+            }
         }
         else
         {
-            //Will reload apache configuration at the end of the script
-            $needApacheReload = true;
-
-            //Let's send the confirmation email to the user.
-            SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress);
-            echo "User created: $row[$col_username] \n";
-
-            //NULL out the password in the DB once the user is created
-            //UPDATE `customers` SET `password` = NULL WHERE `customers`.`username` = '...';
-            $update_query = 'UPDATE customers SET password = NULL where username = ' . "'$row[$col_username]'";
-            $update_query_result = mysqli_query($connection, $update_query);
-
-            if($update_query_result === false)
-            {
-                echo 'Error. The user was created, but could not update the database record: ' . $row[$col_username] . "\n";
-            }
-            else
-            {
-                echo "Encrypted password removed from the DB for user: $row[$col_username] \n";
-            }
-
-
-            //Create the DB and mySquser
-            $dbcreation_result = CreateDBandAccess($row[$col_username], $decrypted, $connection_rdbms);
-
-            if($dbcreation_result != false)
-            {
-                echo "Database and access rights created for user: $row[$col_username] \n";
-            }
-
-            //Create Virtual Host for *.greathosting.com
-            $vhresult = CreateVirtualHost($row[$col_username]);
-
-            if($vhresult == false)
-            {
-                echo "Could not create the virtual host for user: $row[$col_username] \n";
-            }
-            else
-            {
-                echo "Virtual host (subdomain) created for user: $row[$col_username] \n";
-            }
-
-
+            echo 'Error during decrypting the password for user: ' . $row[$col_username] . "\n";
         }
     }
-    else
-    {
-        echo 'Error during decrypting the password for user: ' . $row[$col_username] . "\n";
-    }
-
 }
+
+//Forgot password request handling
+$passresets = IsPasswordResetNeeded($connection);
+if($passresets != false)
+{
+    while ($row = $passresets->fetch_row())
+    {
+        ResetPassword($connection, $row[$col_username], $crypter->Decrypt($row[$col_changedpass]), $connection_rdbms);
+    }
+}
+else
+{
+    echo "No password changes needed.\n";
+}
+
+
+
+
+
 
 //Closing mysql connections
 $qurey_result->close();
@@ -134,6 +155,48 @@ if($needApacheReload == true)
 
     echo "Apache config reloaded \n";
 }
+
+
+
+
+///////////////////////////////////////////////////////////////
+//Functions
+///////////////////////////////////////////////////////////////
+
+
+function ResetPassword($db_connection, $username, $newpass, $db_connection_rdbms)
+{
+    //Change system password
+    $command = "echo $username" . ':' . "$newpass" . ' | ' . "chpasswd";
+    $res = shell_exec($command);
+    echo $command . "\n";
+    echo $res;
+
+
+    //Change mysql passwd
+    $query = 'SET PASSWORD FOR ' . "'$username'" . '@' . "'%' = '$newpass'";
+    mysqli_query($db_connection_rdbms, $query);
+
+    //Delete new password from the customer database
+    $update_query = 'UPDATE customers SET changedpassword = NULL, resetpasstoken = NULL, tokenexpire = NULL where username = ' . "'$username'";
+    mysqli_query($db_connection, $update_query);
+}
+
+
+
+//Returns the list of user records where password reset is needed.
+//Returns false if no reset is needed (or error occured)
+function IsPasswordResetNeeded($db_connection)
+{
+    $query = "SELECT * FROM customers WHERE changedpassword IS NOT NULL";
+    $query_result = mysqli_query($db_connection, $query);
+
+    if($query_result == null || $query_result == false || $query_result->num_rows == 0)
+        return false;
+
+    return $query_result;
+}
+
 
 
 function CreateVirtualHost($usrname)

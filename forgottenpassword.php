@@ -285,7 +285,7 @@ function GetEmailBody($firstname, $username, $token)
 			"You have requested password reset to your account(s). \n" .
 			"This email contains the reset link for the account with username: $username \n\n" .
 			"Using the link below you can reset your password. This link is valid for only 24 hours.\n\n" .
-			'http://' . shell_exec('hostname') . '/forgottenpassword.php?username=' . $username .
+			'http://' . $_SERVER['SERVER_NAME'] . '/forgottenpassword.php?username=' . $username .
 			'&resettoken=' . $token . "\n\n" .
 			"Regards,\nGreathosting.com";
 
