@@ -1,7 +1,50 @@
 <?php
 
+
+//Logger class: manages writing messages into the system log
+class Logger
+{
+    private $logfile = false;
+
+    //Opens the logfile
+    public function OpenLog()
+    {
+        $this->logfile = fopen('/var/log/greathosting.log', 'a');
+        if($this->logfile == false)
+            echo 'Error. Could not open the logfile.';
+    }
+
+    //Close the logfile
+    public function CloseLog()
+    {
+        //Close the logfile
+        if($this->logfile != false)
+        {
+            Log('Script ended.');
+            fclose($this->logfile);
+        }
+    }
+
+    //Adds a log entry with date
+    public function Log($message)
+    {
+        $entry = date(DATE_RFC2822) . ": " . "$message" . "\n";
+
+        if($this->logfile != false)
+            fwrite($this->logfile, $entry);
+
+        echo $entry;
+    }
+};
+
+//Opening the logfile
+$log = new Logger();
+$log->OpenLog();
+$log->Log("Scheduled account creator and password resetter script launched.");
+
 $errorflag = false;
 
+//Enumerations
 $col_username = 0;
 $col_email = 1;
 $col_firstname = 2;
@@ -12,7 +55,7 @@ $col_token = 6;
 $col_tokenexpire = 7;
 $col_changedpass = 8;
 
-
+//True if Apache config needs to be reloaded at the end of the script (e.g. when new user created)
 $needApacheReload = false;
 
 require '/var/www/html/CloudModule/code/Crypto.php';
@@ -20,24 +63,48 @@ require '/var/www/settings/settings.php';
 
 $crypter = new Crypto();
 $encoded_pass = $crypter->Decrypt($db_password);
-if($encoded_pass == false) { exit("Error. Could not decrypt the database password.\n"); }
+if($encoded_pass == false)
+{
+    $log->Log($logfile, "Error. Could not decrypt the database password.");
+    $log->CloseLog();
+    exit();
+}
 
 //Connection to the customers database only
 $connection = mysqli_connect('localhost', $db_userName, $encoded_pass, $db_name);
 //Connection to the RDBMS
 $connection_rdbms = mysqli_connect('localhost', $db_userName, $encoded_pass);
 
-if($connection != true) { exit("Error. Could not connect to the database.\n"); }
-if($connection_rdbms != true) { exit("Error. Could not connect to the RDBMS.\n"); }
+if($connection != true)
+{
+    $log->Log("Error. Could not connect to the database.");
+    $log->CloseLog();
+    exit();
+}
+if($connection_rdbms != true)
+{
+    $log->Log("Error. Could not connect to the RDBMS.");
+    $log->CloseLog();
+    exit();
+}
 
 
 $query = 'SELECT * FROM customers WHERE password is NOT NULL';
 $qurey_result = mysqli_query($connection,$query);
-if($qurey_result === false) { exit("Error. The query to get the list of users for account creation failed.\n");}
+if($qurey_result === false)
+{
+    $log->Log("Error. The query to get the list of users for account creation failed.");
+    $log->CloseLog();
+    exit();
+}
 
+
+/////////////////////////////////////
+//Check if new accounts should be created
+/////////////////////////////////////
 if($qurey_result->num_rows < 1)
 {
-    echo "No account needs to be created.\n";
+    $log->Log("No account needs to be created.");
 }
 else
 {
@@ -57,7 +124,7 @@ else
             {
                 $command = $command . ' --skel /etc/skelwordpress/';
                 $neededwordpress = true;
-                echo "Wordpress installation selected for user: $row[$col_username] \n";
+                $log->Log("Wordpress installation selected for user: $row[$col_username]");
             }
 
             shell_exec($command);
@@ -66,8 +133,8 @@ else
             $newuid  = shell_exec("id -u $row[$col_username]");
             if( $newuid  == null || strpos($newuid , 'no') !== false)
             {
-                echo 'Error. Could not create user: ' . $row[$col_username] . "\n";
-                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress);
+                $log->Log("Error. Could not create user:  $row[$col_username]" );
+                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress, $log);
             }
             else
             {
@@ -75,8 +142,9 @@ else
                 $needApacheReload = true;
 
                 //Let's send the confirmation email to the user.
-                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress);
-                echo "User created: $row[$col_username] \n";
+                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress, $log);
+
+                $log->Log("User created: $row[$col_username]");
 
                 //NULL out the password in the DB once the user is created
                 //UPDATE `customers` SET `password` = NULL WHERE `customers`.`username` = '...';
@@ -85,32 +153,32 @@ else
 
                 if($update_query_result === false)
                 {
-                    echo 'Error. The user was created, but could not update the database record: ' . $row[$col_username] . "\n";
+                    $log->Log("Error. The user was created, but could not update the database record: $row[$col_username]");
                 }
                 else
                 {
-                    echo "Encrypted password removed from the DB for user: $row[$col_username] \n";
+                    $log->Log("Encrypted password removed from the DB for user: $row[$col_username] \n");
                 }
 
 
                 //Create the DB and mySquser
-                $dbcreation_result = CreateDBandAccess($row[$col_username], $decrypted, $connection_rdbms);
+                $dbcreation_result = CreateDBandAccess($row[$col_username], $decrypted, $connection_rdbms, $log);
 
                 if($dbcreation_result != false)
                 {
-                    echo "Database and access rights created for user: $row[$col_username] \n";
+                    $log->Log("Database and access rights created for user: $row[$col_username]");
                 }
 
                 //Create Virtual Host for *.greathosting.com
-                $vhresult = CreateVirtualHost($row[$col_username]);
+                $vhresult = CreateVirtualHost($row[$col_username], $log);
 
                 if($vhresult == false)
                 {
-                    echo "Could not create the virtual host for user: $row[$col_username] \n";
+                    $log->Log("Could not create the virtual host for user: $row[$col_username] \n");
                 }
                 else
                 {
-                    echo "Virtual host (subdomain) created for user: $row[$col_username] \n";
+                    $log->Log("Virtual host (subdomain) created for user: $row[$col_username] \n");
                 }
 
 
@@ -118,12 +186,15 @@ else
         }
         else
         {
-            echo 'Error during decrypting the password for user: ' . $row[$col_username] . "\n";
+            $log->Log("Error during decrypting the password for user: $row[$col_username]");
         }
     }
 }
 
+/////////////////////////////////////
 //Forgot password request handling
+/////////////////////////////////////
+
 $passresets = IsPasswordResetNeeded($connection);
 if($passresets != false)
 {
@@ -134,13 +205,12 @@ if($passresets != false)
 }
 else
 {
-    echo "No password changes needed.\n";
+    $log->Log("No password changes needed.");
 }
 
-
-
-
-
+///////////////////////////
+//Finishing the script
+//////////////////////////
 
 //Closing mysql connections
 $qurey_result->close();
@@ -153,10 +223,15 @@ if($needApacheReload == true)
     $serviceReoload = 'service apache2 reload';
     shell_exec($serviceReoload);
 
-    echo "Apache config reloaded \n";
+    $log->Log("Apache config reloaded");
 }
 
+//Closing the log file
+$log->CloseLog();
 
+///////////////////////////
+//END the script
+//////////////////////////
 
 
 ///////////////////////////////////////////////////////////////
@@ -164,6 +239,8 @@ if($needApacheReload == true)
 ///////////////////////////////////////////////////////////////
 
 
+
+//Resets the password for the given user. The same new password will be applied to the system and the db.
 function ResetPassword($db_connection, $username, $newpass, $db_connection_rdbms)
 {
     //Change system password
@@ -198,8 +275,8 @@ function IsPasswordResetNeeded($db_connection)
 }
 
 
-
-function CreateVirtualHost($usrname)
+//Creates a virtualhost for the specified user as: username.hostname
+function CreateVirtualHost($usrname, $log)
 {
     $hostn = shell_exec('hostname');
     $configFile = '/etc/apache2/sites-available/' . $usrname . '.conf';
@@ -214,7 +291,7 @@ function CreateVirtualHost($usrname)
     $fhandle = fopen($configFile, 'w');
     if($fhandle == false)
     {
-        echo "Could not open the file for writing: $configFile";
+        $log->Log("Could not open the file for writing: $configFile");
         return false;
     }
 
@@ -240,8 +317,9 @@ function CreateVirtualHost($usrname)
     }
 }
 
-
-function CreateDBandAccess($usrname, $pass, $rdbms)
+//Creates a MySQL database for the given username.
+//The name of the database is the same as the username
+function CreateDBandAccess($usrname, $pass, $rdbms, $log)
 {
 
     $dbcreator_query = "CREATE DATABASE $usrname";
@@ -249,7 +327,7 @@ function CreateDBandAccess($usrname, $pass, $rdbms)
 
     if($dbcreator_query_result == false)
     {
-        echo "Error: Could not create the database for $usrname \n";
+        $log->Log("Error: Could not create the database for $usrname");
         return false;
     }
 
@@ -260,7 +338,7 @@ function CreateDBandAccess($usrname, $pass, $rdbms)
 
     if($usrcreator_query_result == false)
     {
-        echo "Error: Could not create the database user: $usrname . However, the database was created.\n ";
+        $log->Log("Error: Could not create the database user: $usrname . However, the database was created.");
         return false;
     }
 
@@ -271,7 +349,7 @@ function CreateDBandAccess($usrname, $pass, $rdbms)
 
     if($usrusage_query_result == false)
     {
-        echo "Error: Could not grant usage permissions to the database user: $usrname . However, the database and DB user were created.\n ";
+        $log->Log("Error: Could not grant usage permissions to the database user: $usrname . However, the database and DB user were created.");
         return false;
     }
 
@@ -283,7 +361,7 @@ function CreateDBandAccess($usrname, $pass, $rdbms)
 
     if($dbgrant_query_result  == false)
     {
-        echo "Error: Could not grant full privilidge for the user to its database: $usrname . However, the database and DB user were created.\n ";
+        $log->Log("Error: Could not grant full privilidge for the user to its database: $usrname . However, the database and DB user were created.");
         return false;
     }
 
@@ -292,7 +370,8 @@ function CreateDBandAccess($usrname, $pass, $rdbms)
 }
 
 
-function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress)
+//Sends a confirmation or error email to the provided email address.
+function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress, $log)
 {
     $body = "";
     $subject = "";
@@ -346,7 +425,7 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress)
     $emResult = mail($emladdress,$subject,$body);
     if($emResult == false)
     {
-        echo "Error. Could not send email to $emladdress" ;
+        $log->Log("Error. Could not send email to $emladdress") ;
     }
 
 }
