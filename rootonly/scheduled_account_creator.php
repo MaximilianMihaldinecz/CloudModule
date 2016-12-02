@@ -1,5 +1,8 @@
 <?php
 
+//Change this to true or false to use responsive HTML-based customer notification email versus plain text-based
+$useResponsiveEmail = true;
+
 
 //Logger class: manages writing messages into the system log
 class Logger
@@ -58,8 +61,11 @@ $col_changedpass = 8;
 //True if Apache config needs to be reloaded at the end of the script (e.g. when new user created)
 $needApacheReload = false;
 
-require '/var/www/html/CloudModule/code/Crypto.php';
+require '/var/www/html/code/Crypto.php';
 require '/var/www/settings/settings.php';
+require '/var/www/html/rootonly/responsiveconfmail.php';
+
+$log->Log("Required files found.");
 
 $crypter = new Crypto();
 $encoded_pass = $crypter->Decrypt($db_password);
@@ -134,7 +140,19 @@ else
             if( $newuid  == null || strpos($newuid , 'no') !== false)
             {
                 $log->Log("Error. Could not create user:  $row[$col_username]" );
-                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress, $log);
+
+                //Send notification email to the user.
+                if ($useResponsiveEmail == false)
+                {
+                    //Plain text notification email
+                    SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress, $log);
+                }
+                else
+                {
+                    //Responsive notification email
+                    SendResponsiveEmail($row[$col_email],$row[$col_username], $row[$col_firstname], false, $neededwordpress, $log);
+                }
+
             }
             else
             {
@@ -142,7 +160,16 @@ else
                 $needApacheReload = true;
 
                 //Let's send the confirmation email to the user.
-                SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress, $log);
+                if ($useResponsiveEmail == false)
+                {
+                    //Send plain text email
+                    SendEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress, $log);
+                }
+                else
+                {
+                    //Send responsive HTML email
+                    SendResponsiveEmail($row[$col_email],$row[$col_username], $row[$col_firstname], true, $neededwordpress, $log);
+                }
 
                 $log->Log("User created: $row[$col_username]");
 
@@ -370,7 +397,7 @@ function CreateDBandAccess($usrname, $pass, $rdbms, $log)
 }
 
 
-//Sends a confirmation or error email to the provided email address.
+//Sends a confirmation or error email to the provided email address. This is a plain text based email.
 function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress, $log)
 {
     $body = "";
@@ -422,14 +449,81 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress, $lo
     }
 
 
+    $log->Log("Sending plain text email to: $emladdress");
+
     $emResult = mail($emladdress,$subject,$body);
     if($emResult == false)
     {
-        $log->Log("Error. Could not send email to $emladdress") ;
+        $log->Log("Error. Could not send plain text email to $emladdress") ;
     }
 
 }
 
+//Sends a confirmation or error email to the provided email address. This is a responsive html based email
+function SendResponsiveEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress, $log)
+{
+    $body = "";
+    $subject = "";
+    $welcomemsg = "";
+    $headlinemsg = "";
+
+    $hostn = shell_exec('hostname'); //Make sure it works with other domain name too
+    $wptext = "<br>";
+
+    if($isWordPress === true)
+    {
+        $wptext =   "<br>About your WordPress installation: " .
+            "WordPress will launch its setup when you first navigate to your domain.<br><br>";
+    }
+
+
+    if($hostn == false)
+    {
+        $hostn = 'GreatHosting.com';
+    }
+
+    if($isSuccess == true)
+    {
+         $subject = "Success: your account is ready at  $hostn ";
+         $welcomemsg =  "Hi $firstn,";
+         $headlinemsg = "We have created your account at $hostn";
+         $body =
+            "You can use our SSH, (S)FTP, MySQL and Web hosting services with your username and password.<br>".
+            "Your username is: $usrname <br>" .
+            "You have provided your password during registration. In case you forgotten, ".
+            "You can reset it on our website (from the header menu).<br>".
+            "You can use any SSH/SFTP clients to access our service. We also provide a web interface ".
+            "to manage your database with phpMyAdmin (see the header menu on our site)." .
+            "The name of your database is the same as your username. <br><br>" .
+            "You can access your website in two ways: <br>" .
+            "- $usrname.$hostn <br>" .
+            "- $hostn" . '/~' . "$usrname <br><br>".
+            "$wptext" .
+            "Thanks for choosing our service!<br>".
+            "$hostn";
+    }
+    else
+    {
+        $subject = "Failure: could not create your account at $hostn";
+        $welcomemsg =  "Hi $firstn,";
+        $headlinemsg = "We were not able to create your account due to technical error at $hostn";
+        $body    =
+            "You tried to register with this username $usrname .<br><br>" .
+            "Please try to get in touch with us, or try to register an account again.<br><br>" .
+            "Regards,<br>" .
+            "$hostn";
+
+    }
+
+
+    $log->Log("Sending responsive html email to: $emladdress");
+
+    $emResult = sendresponsiveconfmail($welcomemsg, $headlinemsg, $body, $emladdress, $subject);
+    if($emResult == false)
+    {
+        $log->Log("Error. Could not send responsive html email to $emladdress") ;
+    }
+}
 
 
 
