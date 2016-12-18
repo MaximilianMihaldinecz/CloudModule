@@ -65,13 +65,17 @@ require '/var/www/html/code/Crypto.php';
 require '/var/www/settings/settings.php';
 require '/var/www/html/rootonly/responsiveconfmail.php';
 
+//require '/var/www/html/CloudModule/code/Crypto.php';
+//require '/var/www/settings/settings.php';
+//require '/var/www/html/CloudModule/rootonly/responsiveconfmail.php';
+
 $log->Log("Required files found.");
 
 $crypter = new Crypto();
 $encoded_pass = $crypter->Decrypt($db_password);
 if($encoded_pass == false)
 {
-    $log->Log($logfile, "Error. Could not decrypt the database password.");
+    $log->Log("Error. Could not decrypt the database password.");
     $log->CloseLog();
     exit();
 }
@@ -209,6 +213,16 @@ else
                 }
 
 
+                //Complete the wordpress configuration and installation
+                if(($vhresult == true) &&  ($neededwordpress == true) )
+                {
+                    $log->Log("Completing wordpress installation for user: $row[$col_username] \n");
+                    $serviceReoload = 'service apache2 reload';
+                    shell_exec($serviceReoload);
+                    FinaliseWordpressInstall($row[$col_username], $row[$col_email], $decrypted, $log, $row[$col_firstname]);
+                }
+
+
             }
         }
         else
@@ -264,6 +278,67 @@ $log->CloseLog();
 ///////////////////////////////////////////////////////////////
 //Functions
 ///////////////////////////////////////////////////////////////
+
+
+
+//Ensures that the user don't have to go through the 5 minute wordpress installation process.
+//Instead, Wordpress gets fully installed using the same username and email address.
+//Wordpress will have random password for the admin user, which can be changed at the login page.
+function FinaliseWordpressInstall($username, $eml, $passw, $log, $firstn)
+{
+    //wp-config.php file location
+    $wpconf_location = "/home/$username/public_html/wp-config.php";
+    //installer file location
+    $wpmyinst_location = "/home/$username/public_html/wp-admin/myinstall.php";
+
+    //hostname
+    $hostn = 'greathosting.com';
+    $hostn_cloud = 'greath0sting.com'; //Alternative domain for the cloud implementation
+
+    //Read the wp-config.php file
+    $wpconfig = file_get_contents($wpconf_location);
+    if($wpconfig != false)
+    {
+        //Set database to be the same as username
+        $wpconfig = str_replace('database_name_here',$username, $wpconfig);
+        //Set admin username as the main username
+        $wpconfig = str_replace('username_here',$username,$wpconfig);
+        //Set the password to be the same as the main password
+        $wpconfig = str_replace('password_here',$passw,$wpconfig);
+
+        //Write changes to the config file
+        file_put_contents($wpconf_location,$wpconfig);
+
+        $log->Log("File created for user $username: wp-config.php");
+    }
+
+
+    $wpmyinst = file_get_contents($wpmyinst_location);
+    if($wpmyinst != false)
+    {
+        //Set the title of the wordpress page
+        $title = "$firstn" . " online";
+        $wpmyinst = str_replace('REPTITLE',$title,$wpmyinst);
+        //Set wordpress admin username
+        $wpmyinst = str_replace('REPUSER',$username,$wpmyinst);
+        //Set email address
+        $wpmyinst = str_replace('REPEMAIL', $eml, $wpmyinst);
+
+        //Write changes to the myisntall file
+        file_put_contents($wpmyinst_location, $wpmyinst);
+        //triggering install
+        $triggerurl = "wget -O- " . "$username" . '.' . "$hostn" . '/wp-admin/myinstall.php';
+        $triggerurl_cloud = "wget -O- " . "$username" . '.' . "$hostn_cloud" . '/wp-admin/myinstall.php';
+        shell_exec($triggerurl);
+        shell_exec($triggerurl_cloud);
+        $log->Log("Triggering WP installer: $triggerurl");
+        $log->Log("Triggering WP installer: $triggerurl_cloud");
+        //delete installer so password will be forgotten
+        shell_exec("rm $wpmyinst_location");
+
+        $log->Log("Wordpress installer created, triggered and deleted for user: $username");
+    }
+}
 
 
 
@@ -408,7 +483,8 @@ function SendEmail($emladdress, $usrname, $firstn, $isSuccess, $isWordPress, $lo
     if($isWordPress === true)
     {
         $wptext =   "\nAbout your WordPress installation: " .
-                    "WordPress will launch its setup when you first navigate to your domain.\n\n";
+                    "WordPress is using the same username you selected." .
+                    "A random password was generated for Wordpress which you can reset at its login page.\n\n";
     }
 
 
@@ -473,7 +549,8 @@ function SendResponsiveEmail($emladdress, $usrname, $firstn, $isSuccess, $isWord
     if($isWordPress === true)
     {
         $wptext =   "<br>About your WordPress installation: " .
-            "WordPress will launch its setup when you first navigate to your domain.<br><br>";
+            "WordPress is using the same username you selected.".
+            "A random password was generated for Wordpress which you can reset at its login page.<br><br>";
     }
 
 
